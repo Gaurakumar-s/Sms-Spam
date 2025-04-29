@@ -33,13 +33,13 @@ stats = {
     'spam': 0,
     'ham': 0
 }
-
 # At the beginning of your app.py (after imports):
 if not os.path.exists('model_artifacts.pkl'):
     # Create directory for models if it doesn't exist
     os.makedirs('models', exist_ok=True)
     # Create empty model files to avoid errors
     logging.warning("No model files found. App will run but predictions will be unavailable.")
+
 
 # Load models - first try individual files, then try model_artifacts.pkl
 def load_models():
@@ -104,7 +104,7 @@ def preprocess_text(text):
     )
 
 def generate_explanation(message, prediction, confidence):
-    """Generate a more detailed user-friendly explanation based on the prediction and message content"""
+    """Generate a user-friendly explanation based on the prediction and message content"""
     confidence_value = float(confidence.strip('%')) / 100
     
     # Check for common spam indicators
@@ -114,45 +114,30 @@ def generate_explanation(message, prediction, confidence):
     has_capitalization = len(re.findall(r'[A-Z]{2,}', message)) > 0
     message_length = len(message)
     
-    # Classify confidence levels
-    confidence_level = ""
-    if confidence_value > 0.95:
-        confidence_level = "very high"
-    elif confidence_value > 0.85:
-        confidence_level = "high"
-    elif confidence_value > 0.75:
-        confidence_level = "moderate"
-    else:
-        confidence_level = "low"
-    
     if prediction == 'Spam':
         if confidence_value > 0.9:
-            explanation = f"This message is highly likely to be spam ({confidence_level} confidence). "
-            reasons = []
+            explanation = f"This message is highly likely to be spam with {confidence} confidence. "
             if has_urls:
-                reasons.append("contains suspicious links")
+                explanation += "It contains suspicious links. "
             if has_spam_words:
-                reasons.append("includes common spam trigger words")
+                explanation += "It includes common spam trigger words. "
             if has_exclamation or has_capitalization:
-                reasons.append("uses excessive punctuation or capitalization typical of spam")
-                
-            if reasons:
-                explanation += "It " + ", ".join(reasons) + ". "
+                explanation += "The message uses excessive punctuation or capitalization typical of spam. "
             explanation += "You should avoid clicking any links or responding to this message."
         else:
-            explanation = f"This message appears to be spam ({confidence_level} confidence). "
+            explanation = f"This message appears to be spam with {confidence} confidence. "
             explanation += "It contains some characteristics of spam messages but not all typical indicators. "
             explanation += "Exercise caution before responding or clicking any links."
     else:  # Ham
         if confidence_value > 0.9:
-            explanation = f"This message is highly likely to be legitimate ({confidence_level} confidence). "
+            explanation = f"This message is highly likely to be legitimate with {confidence} confidence. "
             if message_length < 20:
                 explanation += "It's a short, common message with no suspicious content. "
             else:
                 explanation += "It doesn't contain suspicious links or common spam phrases. "
             explanation += "It appears safe for normal interaction."
         else:
-            explanation = f"This message appears to be legitimate ({confidence_level} confidence). "
+            explanation = f"This message appears to be legitimate with {confidence} confidence. "
             explanation += "While it doesn't have strong spam indicators, exercise normal caution when responding."
     
     return explanation
@@ -369,61 +354,6 @@ def home():
             color: rgba(255,255,255,0.7);
             font-size: 14px;
           }
-          .loading {
-            text-align: center;
-            padding: 20px;
-            color: #004d7a;
-          }
-          
-          .loading i {
-            margin-right: 10px;
-          }
-          
-          .confidence-meter {
-            margin-top: 15px;
-          }
-          
-          .confidence-label {
-            font-size: 14px;
-            margin-bottom: 5px;
-            color: #555;
-          }
-          
-          .confidence-bar-container {
-            height: 12px;
-            background-color: #f0f0f0;
-            border-radius: 6px;
-            overflow: hidden;
-          }
-          
-          .confidence-bar {
-            height: 100%;
-            border-radius: 6px;
-            transition: width 0.5s ease;
-          }
-          
-          .prediction-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 18px;
-          }
-          
-          .spam .prediction-header {
-            color: #cc0000;
-          }
-          
-          .ham .prediction-header {
-            color: #1b5e20;
-          }
-          
-          .spam .prediction-header i {
-            color: #ff4d4d;
-          }
-          
-          .ham .prediction-header i {
-            color: #4CAF50;
-          }
         </style>
       </head>
       <body>
@@ -506,12 +436,6 @@ def home():
               return;
             }
             
-            // Show loading state
-            resultDiv.innerHTML = `<div class="loading"><i class="fas fa-circle-notch fa-spin"></i> Analyzing message...</div>`;
-            resultDiv.className = '';
-            resultDiv.style.display = 'block';
-            explanationDiv.style.display = 'none';
-            
             fetch('/predict', {
               method: 'POST',
               headers: {
@@ -521,40 +445,10 @@ def home():
             })
             .then(response => response.json())
             .then(data => {
-              // Convert confidence to a number for calculations
-              const confidenceNum = parseFloat(data.confidence) / 100 || 0;
-              
-              // Color gradient based on confidence
-              let confidenceColor;
-              if (data.prediction === 'Spam') {
-                // Red gradient for spam (darker = more confident)
-                const redIntensity = Math.min(255, Math.floor(180 + (confidenceNum * 75)));
-                confidenceColor = `rgba(${redIntensity}, 70, 70, 1)`;
-              } else {
-                // Green gradient for ham (darker = more confident)
-                const greenIntensity = Math.min(255, Math.floor(100 + (confidenceNum * 155)));
-                confidenceColor = `rgba(70, ${greenIntensity}, 70, 1)`;
+              resultDiv.innerHTML = '<strong>Result:</strong> ' + data.prediction;
+              if (data.confidence) {
+                resultDiv.innerHTML += ' <strong>(Confidence: ' + data.confidence + ')</strong>';
               }
-              
-              // Create a more visual confidence meter
-              const confidenceMeter = `
-                <div class="confidence-meter">
-                  <div class="confidence-label">${data.confidence} confidence</div>
-                  <div class="confidence-bar-container">
-                    <div class="confidence-bar" style="width: ${confidenceNum * 100}%; background-color: ${confidenceColor};"></div>
-                  </div>
-                </div>
-              `;
-              
-              // Display the prediction with the confidence meter
-              resultDiv.innerHTML = `
-                <div class="prediction-header">
-                  <i class="${data.prediction === 'Spam' ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle'}"></i>
-                  <strong>${data.prediction === 'Spam' ? 'Spam Detected' : 'Message is Safe'}</strong>
-                </div>
-                ${confidenceMeter}
-              `;
-              
               resultDiv.className = data.prediction.toLowerCase();
               resultDiv.style.display = 'block';
               
@@ -633,7 +527,7 @@ def home():
               });
           }
           
-          // Load history with improved confidence visualization
+          // Load history
           function loadHistory() {
             fetch('/history')
               .then(response => response.json())
@@ -655,33 +549,17 @@ def home():
                   
                   data.history.forEach((item, index) => {
                     const confidenceValue = parseFloat(item.confidence.replace('%', '')) / 100;
-                    
-                    // Calculate gradient color based on confidence and prediction
-                    let confidenceColor;
-                    if (item.prediction === 'Spam') {
-                      const redIntensity = Math.min(255, Math.floor(180 + (confidenceValue * 75)));
-                      confidenceColor = `rgba(${redIntensity}, 70, 70, 1)`;
-                    } else {
-                      const greenIntensity = Math.min(255, Math.floor(100 + (confidenceValue * 155)));
-                      confidenceColor = `rgba(70, ${greenIntensity}, 70, 1)`;
-                    }
+                    const width = Math.max(50, confidenceValue * 150) + 'px';
                     
                     html += `
                       <tr>
                         <td>${item.message}</td>
                         <td>
-                          <div style="display: flex; align-items: center;">
-                            <i class="${item.prediction === 'Spam' ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle'}" 
-                               style="margin-right: 8px; color: ${item.prediction === 'Spam' ? '#ff4d4d' : '#4CAF50'};"></i>
-                            ${item.prediction}
-                          </div>
+                          <div class="confidence-indicator ${item.prediction.toLowerCase()}-confidence" 
+                               style="width: ${width};"></div>
+                          ${item.prediction}
                         </td>
-                        <td>
-                          <div style="width: 100px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${confidenceValue * 100}%; height: 8px; background-color: ${confidenceColor};"></div>
-                          </div>
-                          <div style="font-size: 12px; margin-top: 4px;">${item.confidence}</div>
-                        </td>
+                        <td>${item.confidence}</td>
                         <td class="timestamp">${item.timestamp}</td>
                         <td>
                           <button class="delete-btn" onclick="deleteMessage(${index})">
@@ -739,13 +617,8 @@ def predict():
         prediction = 1 if score >= threshold else 0
         result = 'Spam' if prediction == 1 else 'Ham'
         
-        # Always show confidence in the predicted class
-        # For spam: show spam probability
-        # For ham: show ham probability (1 - spam probability)
+        # Display confidence in a more intuitive way (for Ham, we show confidence of NOT being spam)
         confidence_display = f"{score:.2%}" if result == 'Spam' else f"{(1-score):.2%}"
-        
-        # Raw score for analytics (always the spam probability)
-        raw_score = score
         
         # Generate explanation
         explanation = generate_explanation(message, result, confidence_display)
@@ -762,7 +635,6 @@ def predict():
             'message': message,
             'prediction': result,
             'confidence': confidence_display,
-            'raw_score': f"{raw_score:.2%}",  # Store raw spam probability for reference
             'explanation': explanation,
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
         })
@@ -772,7 +644,6 @@ def predict():
         return jsonify({
             'prediction': result,
             'confidence': confidence_display,
-            'raw_score': f"{raw_score:.2%}",  # Return raw spam probability for reference
             'explanation': explanation
         })
     except KeyError:
@@ -824,8 +695,6 @@ def delete_message():
     except Exception as e:
         logging.error(f"Delete message error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
 
 if __name__ == '__main__':
     # Download NLTK data if needed
