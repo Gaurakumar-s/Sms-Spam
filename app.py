@@ -1,10 +1,4 @@
-# At the beginning of your app.py:
-if not os.path.exists('model_artifacts.pkl'):
-    # Create directory for models if it doesn't exist
-    os.makedirs('models', exist_ok=True)
-    # Create empty model files to avoid errors
-    logging.warning("No model files found. App will run but predictions will be unavailable.")
-from flask import Flask, request, jsonify
+import os  # Add this import at the top
 import pickle
 import re
 import nltk
@@ -15,7 +9,8 @@ from collections import deque
 import time
 import json
 import logging
-import os
+
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -38,6 +33,13 @@ stats = {
     'spam': 0,
     'ham': 0
 }
+
+# At the beginning of your app.py (after imports):
+if not os.path.exists('model_artifacts.pkl'):
+    # Create directory for models if it doesn't exist
+    os.makedirs('models', exist_ok=True)
+    # Create empty model files to avoid errors
+    logging.warning("No model files found. App will run but predictions will be unavailable.")
 
 # Load models - first try individual files, then try model_artifacts.pkl
 def load_models():
@@ -822,6 +824,8 @@ def delete_message():
     except Exception as e:
         logging.error(f"Delete message error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     # Download NLTK data if needed
