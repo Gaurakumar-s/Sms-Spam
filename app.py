@@ -1,3 +1,9 @@
+# At the beginning of your app.py:
+if not os.path.exists('model_artifacts.pkl'):
+    # Create directory for models if it doesn't exist
+    os.makedirs('models', exist_ok=True)
+    # Create empty model files to avoid errors
+    logging.warning("No model files found. App will run but predictions will be unavailable.")
 from flask import Flask, request, jsonify
 import pickle
 import re

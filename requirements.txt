@@ -1,4 +1,8 @@
-scikit-learn==1.4.0
-nltk==3.8.1
-imbalanced-learn==0.12.0
-gradio==4.29.0
+Flask==2.3.3
+scikit-learn>=1.2.0
+nltk>=3.8.1
+joblib>=1.2.0
+gunicorn==21.2.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy==1.11.2
